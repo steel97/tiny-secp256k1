@@ -272,12 +272,12 @@ export function xOnlyPointAddTweak(
     const parity = wasm.xOnlyPointAddTweak();
     return parity !== -1
       ? {
-          parity,
-          xOnlyPubkey: X_ONLY_PUBLIC_KEY_INPUT.slice(
-            0,
-            validate.X_ONLY_PUBLIC_KEY_SIZE
-          ),
-        }
+        parity,
+        xOnlyPubkey: X_ONLY_PUBLIC_KEY_INPUT.slice(
+          0,
+          validate.X_ONLY_PUBLIC_KEY_SIZE
+        ),
+      }
       : null;
   } finally {
     X_ONLY_PUBLIC_KEY_INPUT.fill(0);
@@ -463,5 +463,23 @@ export function verifySchnorr(
     HASH_INPUT.fill(0);
     X_ONLY_PUBLIC_KEY_INPUT.fill(0);
     SIGNATURE_INPUT.fill(0);
+  }
+}
+
+// veil
+export function getKeyImage(
+  pk: Uint8Array,
+  sk: Uint8Array
+): Uint8Array | null {
+  const outputlen = pk.length;
+  const inputlen = pk.length;
+  const inputlensk = sk.length;
+  try {
+    PUBLIC_KEY_INPUT2.set(pk);
+    TWEAK_INPUT.set(sk);
+    return wasm.getKeyImage(outputlen, inputlen, inputlensk) === 1 ? PUBLIC_KEY_INPUT : null;
+  } finally {
+    PUBLIC_KEY_INPUT.fill(0);
+    TWEAK_INPUT.fill(0);
   }
 }

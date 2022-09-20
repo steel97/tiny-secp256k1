@@ -55,6 +55,8 @@ interface Secp256k1WASM {
   verify: (Q: number, strict: number) => number;
   verifySchnorr: () => number;
   recover: (outputlen: number, recoveryId: RecoveryIdType) => number;
+  // veil
+  getKeyImage: (outputlen: number, inputpkLen: number, inputskLen: number) => number;
 }
 
 export default instance.exports as unknown as Secp256k1WASM;
