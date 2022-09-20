@@ -7,6 +7,9 @@ const binary = readFileSync(path("secp256k1.wasm"));
 const imports = {
   "./rand.js": rand,
   "./validate_error.js": validate_error,
+  env: {
+    printf: (msg: any) => console.log(msg),
+  }
 };
 
 const mod = new WebAssembly.Module(binary);
@@ -34,6 +37,10 @@ interface Secp256k1WASM {
   HASH_INPUT: WebAssemblyGlobal;
   EXTRA_DATA_INPUT: WebAssemblyGlobal;
   SIGNATURE_INPUT: WebAssemblyGlobal;
+
+  KI_OUTPUT: WebAssemblyGlobal;
+  PK_INPUT: WebAssemblyGlobal;
+  SK_INPUT: WebAssemblyGlobal;
 
   initializeContext: () => void;
   isPoint: (p: number) => number;

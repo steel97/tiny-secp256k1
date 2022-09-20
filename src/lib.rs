@@ -44,6 +44,9 @@ extern "C" {
 extern "C" {
     #[link_name = "generateInt32"]
     fn generate_int32() -> i32;
+
+    #[link_name = "printn"]
+    fn printn(msg:u8);
 }
 
 type InvalidInputResult<T> = Result<T, usize>;
@@ -89,6 +92,15 @@ pub static HASH_INPUT: [u8; HASH_SIZE] = [0; HASH_SIZE];
 pub static EXTRA_DATA_INPUT: [u8; EXTRA_DATA_SIZE] = [0; EXTRA_DATA_SIZE];
 #[no_mangle]
 pub static mut SIGNATURE_INPUT: [u8; SIGNATURE_SIZE] = [0; SIGNATURE_SIZE];
+
+// veil start
+#[no_mangle]
+pub static mut KI_OUTPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
+#[no_mangle]
+pub static mut PK_INPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
+#[no_mangle]
+pub static mut SK_INPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
+// veil end
 
 macro_rules! jstry {
     ($value:expr) => {
@@ -513,7 +525,7 @@ pub extern "C" fn sign_schnorr(extra_data: i32) {
         } else {
             EXTRA_DATA_INPUT.as_ptr()
         }
-        .cast::<u8>();
+        .cast::<c_void>();
 
         assert_eq!(
             secp256k1_keypair_create(get_context(), &mut keypair, PRIVATE_INPUT.as_ptr()),
@@ -534,7 +546,7 @@ pub extern "C" fn sign_schnorr(extra_data: i32) {
                 SIGNATURE_INPUT.as_mut_ptr(),
                 HASH_INPUT.as_ptr(),
                 &keypair,
-                //secp256k1_nonce_function_bip340,
+                secp256k1_nonce_function_bip340,
                 noncedata
             ),
             1
@@ -616,7 +628,6 @@ pub extern "C" fn verify_schnorr() -> i32 {
             get_context(),
             SIGNATURE_INPUT.as_ptr(),
             HASH_INPUT.as_ptr(),
-            HASH_SIZE,//hash_input size
             &pk,
         ) == 1
         {
@@ -640,12 +651,15 @@ pub extern "C" fn get_keyimage(outputlen: usize, inputpkLen: usize, inputskLen: 
         sk: *const c_uchar,   // pk2
     */
     unsafe {
-        let pk2 = jstry!(pubkey_parse(PUBLIC_KEY_INPUT2.as_ptr(), inputpkLen), 0);
+        //let pk2 = jstry!(pubkey_parse(PK_INPUT.as_ptr(), inputpkLen), 0);
+        /*for i in 0..33 {
+            printn(PK_INPUT[i]);
+        }*/
         if secp256k1_get_keyimage(
             get_context(),
-            PUBLIC_KEY_INPUT.as_mut_ptr(),//&mut pk
-            &pk2,
-            TWEAK_INPUT.as_mut_ptr(),
+            KI_OUTPUT.as_mut_ptr(),//&mut pk
+            PK_INPUT.as_mut_ptr(),
+            SK_INPUT.as_mut_ptr(),
         ) == 1
         {
             1

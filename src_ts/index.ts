@@ -13,6 +13,12 @@ const WASM_HASH_INPUT_PTR = wasm.HASH_INPUT.value;
 const WASM_EXTRA_DATA_INPUT_PTR = wasm.EXTRA_DATA_INPUT.value;
 const WASM_SIGNATURE_INPUT_PTR = wasm.SIGNATURE_INPUT.value;
 
+// veil
+const WASM_KI_OUTPUT_PTR = wasm.KI_OUTPUT.value;
+const WASM_PK_INPUT_PTR = wasm.PK_INPUT.value;
+const WASM_SK_INPUT_PTR = wasm.SK_INPUT.value;
+// end
+
 const PRIVATE_KEY_INPUT = WASM_BUFFER.subarray(
   WASM_PRIVATE_KEY_PTR,
   WASM_PRIVATE_KEY_PTR + validate.PRIVATE_KEY_SIZE
@@ -49,6 +55,24 @@ const SIGNATURE_INPUT = WASM_BUFFER.subarray(
   WASM_SIGNATURE_INPUT_PTR,
   WASM_SIGNATURE_INPUT_PTR + validate.SIGNATURE_SIZE
 );
+
+// veil
+const KI_OUTPUT = WASM_BUFFER.subarray(
+  WASM_KI_OUTPUT_PTR,
+  WASM_KI_OUTPUT_PTR + validate.PUBLIC_KEY_COMPRESSED_SIZE
+);
+
+const PK_INPUT = WASM_BUFFER.subarray(
+  WASM_PK_INPUT_PTR,
+  WASM_PK_INPUT_PTR + validate.PUBLIC_KEY_COMPRESSED_SIZE
+);
+
+const SK_INPUT = WASM_BUFFER.subarray(
+  WASM_SK_INPUT_PTR,
+  WASM_SK_INPUT_PTR + validate.PUBLIC_KEY_COMPRESSED_SIZE
+);
+
+// end
 
 function assumeCompression(compressed?: boolean, p?: Uint8Array): number {
   if (compressed === undefined) {
@@ -475,9 +499,10 @@ export function getKeyImage(
   const inputlen = pk.length;
   const inputlensk = sk.length;
   try {
-    PUBLIC_KEY_INPUT2.set(pk);
-    TWEAK_INPUT.set(sk);
-    return wasm.getKeyImage(outputlen, inputlen, inputlensk) === 1 ? PUBLIC_KEY_INPUT : null;
+    PK_INPUT.set(pk);
+    SK_INPUT.set(sk);
+    const res = wasm.getKeyImage(outputlen, inputlen, inputlensk);
+    return (res == 0 || res == 3) ? KI_OUTPUT : null;
   } finally {
     PUBLIC_KEY_INPUT.fill(0);
     TWEAK_INPUT.fill(0);
