@@ -1,0 +1,1 @@
+export PATH=/home/ivan/binaryen-version_110/bin:$PATH
