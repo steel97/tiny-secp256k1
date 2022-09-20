@@ -1,5 +1,5 @@
 {
-  "name": "tiny-secp256k1-vfork",
+  "name": "veil-secp256k1",
   "version": "2.2.1",
   "description": "A tiny secp256k1 JS fork",
   "homepage": "https://github.com/steel97/tiny-secp256k1#readme",
