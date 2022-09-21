@@ -87,7 +87,7 @@ const BLIND_OUTPUT = WASM_BUFFER.subarray(
 
 const MESSAGE_OUTPUT = WASM_BUFFER.subarray(
   WASM_MESSAGE_OUTPUT_PTR,
-  WASM_MESSAGE_OUTPUT_PTR + 32
+  WASM_MESSAGE_OUTPUT_PTR + 256
 );
 
 const NONCE_OUTPUT = WASM_BUFFER.subarray(
@@ -563,9 +563,9 @@ export function getKeyImage(
 export interface RangeProofRewindResult {
   blindOut: Uint8Array,
   messageOut: Uint8Array,
-  value: number,
-  minValue: number,
-  maxValue: number
+  value: bigint,
+  minValue: bigint,
+  maxValue: bigint
 }
 
 export function rangeProofRewind(
@@ -574,23 +574,21 @@ export function rangeProofRewind(
   rangeproof: Uint8Array,
 ): RangeProofRewindResult | null {
   try {
-    let value_out = 0;
-    let out_len = 0;
+    let out_len = 256;
     NONCE_OUTPUT.set(nonce);
-    let min_value = 0;
-    let max_value = 0;
+    MESSAGE_OUTPUT.fill(0);
     COMMIT.set(commitment);
     PROOF.set(rangeproof);
     const proofLen = rangeproof.length;
 
-    const res = wasm.rangeProofRewind(value_out, out_len, min_value, max_value, proofLen);
+    const res = wasm.rangeProofRewind(out_len, proofLen);
     //console.log(PROOFRESULT.slice(0, 40));
     const dv = new DataView(PROOFRESULT.slice(0, 40).buffer);
     return res == 1 ? {
       blindOut: BLIND_OUTPUT.slice(0, 32),
-      value: parseInt(dv.getBigUint64(0, true).toString()),
-      minValue: parseInt(dv.getBigUint64(16, true).toString()),
-      maxValue: parseInt(dv.getBigUint64(24, true).toString()),
+      value: dv.getBigUint64(0, true),
+      minValue: dv.getBigUint64(16, true),
+      maxValue: dv.getBigUint64(24, true),
       messageOut: MESSAGE_OUTPUT.slice(0, parseInt(dv.getBigUint64(32, true).toString()))
     } : null;
   } finally {

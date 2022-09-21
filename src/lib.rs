@@ -697,7 +697,7 @@ pub extern "C" fn get_keyimage(outputlen: usize, inputpkLen: usize, inputskLen: 
 
 #[no_mangle]
 #[export_name = "rangeProofRewind"]
-pub extern "C" fn rangeproof_rewind(mut value_out: usize, mut outlen: usize, mut min_value: usize, mut max_value: usize, plen: usize) -> i32 {
+pub extern "C" fn rangeproof_rewind(mut outlen: usize, plen: usize) -> i32 {
     // mut outputlen: usize
     /*
         cx: *const Context,
@@ -715,6 +715,9 @@ pub extern "C" fn rangeproof_rewind(mut value_out: usize, mut outlen: usize, mut
         extra_commit_len: size_t, //without *  usize
     */
     unsafe {
+        let mut value_out: u64 = 0;
+        let mut min_value: u64 = 0;
+        let mut max_value: u64 = 0;
         //let pk2 = jstry!(pubkey_parse(PK_INPUT.as_ptr(), inputpkLen), 0);
         /*for i in 0..33 {
             printn(PK_INPUT[i]);
@@ -735,8 +738,8 @@ pub extern "C" fn rangeproof_rewind(mut value_out: usize, mut outlen: usize, mut
             0
         );
         if res == 1 {
-            let mut a = value_out as u64;
-            let mut b = value_out;
+            //let mut a = value_out as u64;
+            //let mut b = value_out;
             //printn3(a);
             //printn2(b);
             byteorder::NativeEndian::write_u64(&mut PROOFRESULT[0..0+8], value_out as u64);

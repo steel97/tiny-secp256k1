@@ -17,7 +17,7 @@ checksum = "79c2681d6594606957bbb8631c4b90a7fcaaa72cdb714743a437b156d6a7eedd"
 [[package]]
 name = "secp256k1-sys"
 version = "0.4.1"
-source = "git+https://github.com/steel97/rust-secp256k1?rev=58a8855d5ae9158bc49142948af57c4b1dd3d008#58a8855d5ae9158bc49142948af57c4b1dd3d008"
+source = "git+https://github.com/steel97/rust-secp256k1?rev=8bb762d62a11442c9f008de7d9b98690a42e7426#8bb762d62a11442c9f008de7d9b98690a42e7426"
 dependencies = [
  "cc",
 ]
