@@ -17,6 +17,13 @@ const WASM_SIGNATURE_INPUT_PTR = wasm.SIGNATURE_INPUT.value;
 const WASM_KI_OUTPUT_PTR = wasm.KI_OUTPUT.value;
 const WASM_PK_INPUT_PTR = wasm.PK_INPUT.value;
 const WASM_SK_INPUT_PTR = wasm.SK_INPUT.value;
+
+const WASM_BLIND_OUTPUT_PTR = wasm.BLIND_OUTPUT.value;
+const WASM_MESSAGE_OUTPUT_PTR = wasm.MESSAGE_OUTPUT.value;
+const WASM_NONCE_OUTPUT_PTR = wasm.NONCE_OUTPUT.value;
+const WASM_COMMIT_PTR = wasm.COMMIT.value;
+const WASM_PROOF_PTR = wasm.PROOF.value;
+const WASM_PROOFRESULT_PTR = wasm.PROOFRESULT.value;
 // end
 
 const PRIVATE_KEY_INPUT = WASM_BUFFER.subarray(
@@ -72,6 +79,36 @@ const SK_INPUT = WASM_BUFFER.subarray(
   WASM_SK_INPUT_PTR + validate.PUBLIC_KEY_COMPRESSED_SIZE
 );
 
+// rangeproof
+const BLIND_OUTPUT = WASM_BUFFER.subarray(
+  WASM_BLIND_OUTPUT_PTR,
+  WASM_BLIND_OUTPUT_PTR + 32
+);
+
+const MESSAGE_OUTPUT = WASM_BUFFER.subarray(
+  WASM_MESSAGE_OUTPUT_PTR,
+  WASM_MESSAGE_OUTPUT_PTR + 32
+);
+
+const NONCE_OUTPUT = WASM_BUFFER.subarray(
+  WASM_NONCE_OUTPUT_PTR,
+  WASM_NONCE_OUTPUT_PTR + 32
+);
+
+const COMMIT = WASM_BUFFER.subarray(
+  WASM_COMMIT_PTR,
+  WASM_COMMIT_PTR + 33
+);
+
+const PROOF = WASM_BUFFER.subarray(
+  WASM_PROOF_PTR,
+  WASM_PROOF_PTR + 40960
+);
+
+const PROOFRESULT = WASM_BUFFER.subarray(
+  WASM_PROOFRESULT_PTR,
+  WASM_PROOFRESULT_PTR + 40
+);
 // end
 
 function assumeCompression(compressed?: boolean, p?: Uint8Array): number {
@@ -502,9 +539,80 @@ export function getKeyImage(
     PK_INPUT.set(pk);
     SK_INPUT.set(sk);
     const res = wasm.getKeyImage(outputlen, inputlen, inputlensk);
-    return (res == 0 || res == 3) ? KI_OUTPUT : null;
+    return (res == 0 || res == 3) ? KI_OUTPUT.slice(0, validate.PUBLIC_KEY_COMPRESSED_SIZE) : null;
+  } finally {
+    KI_OUTPUT.fill(0);
+    PK_INPUT.fill(0);
+    SK_INPUT.fill(0);
+  }
+}
+
+/*
+            BLIND_OUT.as_mut_ptr(),
+            &mut value_out,
+            MESSAGE_OUT.as_mut_ptr(),
+            &mut outlen,
+            NONCE.as_mut_ptr(),
+            &mut min_value,
+            &mut max_value,
+            COMMIT.as_mut_ptr(),
+            PROOF.as_mut_ptr(),
+            plen,
+            BLIND_OUT.as_mut_ptr(),
+*/
+export interface RangeProofRewindResult {
+  blindOut: Uint8Array,
+  messageOut: Uint8Array,
+  value: number,
+  minValue: number,
+  maxValue: number
+}
+
+export function rangeProofRewind(
+  nonce: Uint8Array,
+  commitment: Uint8Array,
+  rangeproof: Uint8Array,
+): RangeProofRewindResult | null {
+  try {
+    let value_out = 0;
+    let out_len = 0;
+    NONCE_OUTPUT.set(nonce);
+    let min_value = 0;
+    let max_value = 0;
+    COMMIT.set(commitment);
+    PROOF.set(rangeproof);
+    const proofLen = rangeproof.length;
+
+    const res = wasm.rangeProofRewind(value_out, out_len, min_value, max_value, proofLen);
+    //console.log(PROOFRESULT.slice(0, 40));
+    const dv = new DataView(PROOFRESULT.slice(0, 40).buffer);
+    return res == 1 ? {
+      blindOut: BLIND_OUTPUT.slice(0, 32),
+      value: parseInt(dv.getBigUint64(0, true).toString()),
+      minValue: parseInt(dv.getBigUint64(16, true).toString()),
+      maxValue: parseInt(dv.getBigUint64(24, true).toString()),
+      messageOut: MESSAGE_OUTPUT.slice(0, parseInt(dv.getBigUint64(32, true).toString()))
+    } : null;
+  } finally {
+    PROOFRESULT.fill(0);
+    BLIND_OUTPUT.fill(0);
+    MESSAGE_OUTPUT.fill(0);
+    NONCE_OUTPUT.fill(0);
+    COMMIT.fill(0);
+    PROOF.fill(0);
+  }
+}
+
+export function ECDH_VEIL(publicKey: Uint8Array, privateKey: Uint8Array): Uint8Array | null {
+  try {
+    PUBLIC_KEY_INPUT.set(publicKey);
+    PRIVATE_KEY_INPUT.set(privateKey);
+    const res = wasm.ECDH_VEIL(publicKey.length);
+    return res == 0 ? NONCE_OUTPUT.slice(0, 32) : NONCE_OUTPUT.slice(0, 32); // TO-DO validation, return null if error
   } finally {
     PUBLIC_KEY_INPUT.fill(0);
-    TWEAK_INPUT.fill(0);
+    PRIVATE_KEY_INPUT.fill(0);
+    NONCE_OUTPUT.fill(0);
+
   }
 }

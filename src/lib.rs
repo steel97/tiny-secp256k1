@@ -2,6 +2,9 @@
 #![deny(clippy::pedantic)]
 #![no_std]
 
+extern crate byteorder; // 1.2.7
+use byteorder::ByteOrder;
+
 #[cfg(not(target_arch = "wasm32"))]
 compile_error!("Only `wasm32` target_arch is supported.");
 
@@ -25,7 +28,10 @@ use secp256k1_sys::{
     secp256k1_xonly_pubkey_tweak_add_check, types::c_void, Context, KeyPair, PublicKey, Signature,
     XOnlyPublicKey, SECP256K1_SER_COMPRESSED, SECP256K1_SER_UNCOMPRESSED, SECP256K1_START_SIGN,
     SECP256K1_START_VERIFY,
-    secp256k1_get_keyimage
+    // veil
+    secp256k1_get_keyimage,
+    secp256k1_rangeproof_rewind,
+    secp256k1_ecdh_veil
 };
 
 use secp256k1_sys::recovery::{
@@ -47,6 +53,10 @@ extern "C" {
 
     #[link_name = "printn"]
     fn printn(msg:u8);
+    #[link_name = "printn"]
+    fn printn2(msg:usize);
+    #[link_name = "printn"]
+    fn printn3(msg:u64);
 }
 
 type InvalidInputResult<T> = Result<T, usize>;
@@ -71,6 +81,8 @@ const ERROR_BAD_POINT: usize = 1;
 const ERROR_BAD_SIGNATURE: usize = 4;
 // const ERROR_BAD_EXTRA_DATA: usize = 5;
 // const ERROR_BAD_PARITY: usize = 6;
+const MESSAGE_SIZE: usize = 256;
+const PROOF_SIZE: usize = 40960;
 
 #[no_mangle]
 pub static mut PRIVATE_INPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
@@ -100,6 +112,20 @@ pub static mut KI_OUTPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMP
 pub static mut PK_INPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
 #[no_mangle]
 pub static mut SK_INPUT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
+
+#[no_mangle]
+pub static mut BLIND_OUTPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
+#[no_mangle]
+pub static mut MESSAGE_OUTPUT: [u8; MESSAGE_SIZE] = [0; MESSAGE_SIZE];
+#[no_mangle]
+pub static mut NONCE_OUTPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
+#[no_mangle]
+pub static mut COMMIT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRESSED_SIZE];
+#[no_mangle]
+pub static mut PROOF: [u8; PROOF_SIZE] = [0; PROOF_SIZE];
+#[no_mangle]
+pub static mut PROOFRESULT: [u8; 40] = [0; 40];
+
 // veil end
 
 macro_rules! jstry {
@@ -666,5 +692,79 @@ pub extern "C" fn get_keyimage(outputlen: usize, inputpkLen: usize, inputskLen: 
         } else {
             0
         }
+    }
+}
+
+#[no_mangle]
+#[export_name = "rangeProofRewind"]
+pub extern "C" fn rangeproof_rewind(mut value_out: usize, mut outlen: usize, mut min_value: usize, mut max_value: usize, plen: usize) -> i32 {
+    // mut outputlen: usize
+    /*
+        cx: *const Context,
+        blind_out: *mut c_uchar,
+        value_out:  *mut size_t,//longlong
+        message_out:  *mut c_uchar,
+        outlen: *mut size_t,
+        nonce:  *mut c_uchar,
+        min_value:  *mut size_t, //longlong
+        max_value:  *mut size_t, // longlong
+        commit: *mut c_uchar, // rustsecp256k1_v0_4_1_pedersen_commitment
+        proof: *mut c_uchar,
+        plen: size_t, // without * usize
+        extra_commit: *mut c_uchar, ptr::null()
+        extra_commit_len: size_t, //without *  usize
+    */
+    unsafe {
+        //let pk2 = jstry!(pubkey_parse(PK_INPUT.as_ptr(), inputpkLen), 0);
+        /*for i in 0..33 {
+            printn(PK_INPUT[i]);
+        }*/
+        let res = secp256k1_rangeproof_rewind(
+            get_context(),
+            BLIND_OUTPUT.as_mut_ptr(),
+            &mut value_out,
+            MESSAGE_OUTPUT.as_mut_ptr(),
+            &mut outlen,
+            NONCE_OUTPUT.as_mut_ptr(),
+            &mut min_value,
+            &mut max_value,
+            COMMIT.as_mut_ptr(),
+            PROOF.as_mut_ptr(),
+            plen,
+            BLIND_OUTPUT.as_mut_ptr(), //tempory, should be nullptr
+            0
+        );
+        if res == 1 {
+            let mut a = value_out as u64;
+            let mut b = value_out;
+            //printn3(a);
+            //printn2(b);
+            byteorder::NativeEndian::write_u64(&mut PROOFRESULT[0..0+8], value_out as u64);
+            byteorder::NativeEndian::write_u64(&mut PROOFRESULT[8..8+8], outlen as u64);
+            byteorder::NativeEndian::write_u64(&mut PROOFRESULT[16..16+8], min_value as u64);
+            byteorder::NativeEndian::write_u64(&mut PROOFRESULT[24..24+8], max_value as u64);
+        }
+
+        if res == 1
+        {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+//secp256k1_ecdh_veil
+#[no_mangle]
+#[export_name = "ECDH_VEIL"]
+pub extern "C" fn ecdh_veil(inputlen: usize) -> i32 {
+    unsafe {
+        let mut pk = jstry!(pubkey_parse(PUBLIC_KEY_INPUT.as_ptr(), inputlen), 0);
+        return secp256k1_ecdh_veil(
+            get_context(),
+            NONCE_OUTPUT.as_mut_ptr(),
+            pk.as_mut_ptr().cast::<PublicKey>(),
+            PRIVATE_INPUT.as_ptr()
+        );
     }
 }

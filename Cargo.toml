@@ -14,7 +14,8 @@ crate-type = ["cdylib"]
 [dependencies]
 # `[patch.crates-io]` is not working :(
 # This commit is where secp256k1-sys version changed to 0.4.1
-secp256k1-sys = { version = "0.4.1", default-features = false,  features=["recovery"], git = "https://github.com/steel97/rust-secp256k1", rev = "841a3161621caad37b248f3685f1da1857534f1f" }
+byteorder = { version = "1.4.3", default-features = false }
+secp256k1-sys = { version = "0.4.1", default-features = false,  features=["recovery"], git = "https://github.com/steel97/rust-secp256k1", rev = "58a8855d5ae9158bc49142948af57c4b1dd3d008" }
 
 [profile.release]
 lto = true

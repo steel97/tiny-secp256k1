@@ -38,9 +38,18 @@ interface Secp256k1WASM {
   EXTRA_DATA_INPUT: WebAssemblyGlobal;
   SIGNATURE_INPUT: WebAssemblyGlobal;
 
+  // veil
   KI_OUTPUT: WebAssemblyGlobal;
   PK_INPUT: WebAssemblyGlobal;
   SK_INPUT: WebAssemblyGlobal;
+
+  BLIND_OUTPUT: WebAssemblyGlobal;
+  MESSAGE_OUTPUT: WebAssemblyGlobal;
+  NONCE_OUTPUT: WebAssemblyGlobal;
+  COMMIT: WebAssemblyGlobal;
+  PROOF: WebAssemblyGlobal;
+  PROOFRESULT: WebAssemblyGlobal;
+  // end
 
   initializeContext: () => void;
   isPoint: (p: number) => number;
@@ -64,6 +73,8 @@ interface Secp256k1WASM {
   recover: (outputlen: number, recoveryId: RecoveryIdType) => number;
   // veil
   getKeyImage: (outputlen: number, inputpkLen: number, inputskLen: number) => number;
+  rangeProofRewind: (value_out: number, outlen: number, min_value: number, max_value: number, plen: number) => number;
+  ECDH_VEIL: (inputlen: number) => number;
 }
 
 export default instance.exports as unknown as Secp256k1WASM;
