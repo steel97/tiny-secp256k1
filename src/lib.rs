@@ -31,7 +31,9 @@ use secp256k1_sys::{
     // veil
     secp256k1_get_keyimage,
     secp256k1_rangeproof_rewind,
-    secp256k1_ecdh_veil
+    secp256k1_ecdh_veil,
+    secp256k1_pedersen_commit,
+    secp256k1_rangeproof_sign
 };
 
 use secp256k1_sys::recovery::{
@@ -769,5 +771,70 @@ pub extern "C" fn ecdh_veil(inputlen: usize) -> i32 {
             pk.as_mut_ptr().cast::<PublicKey>(),
             PRIVATE_INPUT.as_ptr()
         );
+    }
+}
+
+//secp256k1_pedersen_commit
+#[no_mangle]
+#[export_name = "pedersenCommit"]
+pub extern "C" fn pedersen_commit(value: u64) -> i32 {
+    unsafe {
+        /*
+        commit: *mut c_uchar,
+        blind: *mut c_uchar,
+        value: *mut u64,//longlong
+        */
+        //let mut pk = jstry!(pubkey_parse(PUBLIC_KEY_INPUT.as_ptr(), inputlen), 0);
+        return secp256k1_pedersen_commit(
+            get_context(),
+            COMMIT.as_mut_ptr(),
+            BLIND_OUTPUT.as_mut_ptr(),
+            value
+        );
+    }
+}
+
+//secp256k1_rangeproof_sign
+#[no_mangle]
+#[export_name = "rangeproofSign"]
+pub extern "C" fn rangeproof_sign(mut plen: u32, min_value: u64, exp: i32, min_bits: i32, value: u64, msg_len: usize) -> i32 {
+    unsafe {
+        /*
+        proof: *mut c_uchar,
+        plen: *mut size_t,
+        min_value: u64,
+        commit: *mut c_uchar,        
+        blind: *mut c_uchar,
+        nonce: *mut c_uchar,
+        exp: c_int,
+        min_bits: c_int,
+        value: u64,//longlong
+        message: *mut c_uchar,
+        msg_len: size_t,
+        extra_commit: *mut c_uchar,
+        extra_commit_len: size_t
+        */
+        let res = secp256k1_rangeproof_sign(
+            get_context(),
+            PROOF.as_mut_ptr(),
+            &mut plen,
+            min_value,
+            COMMIT.as_mut_ptr(),
+            BLIND_OUTPUT.as_mut_ptr(),
+            NONCE_OUTPUT.as_mut_ptr(),
+            exp,
+            min_bits,
+            value,
+            MESSAGE_OUTPUT.as_mut_ptr(),
+            msg_len,
+            BLIND_OUTPUT.as_mut_ptr(), //tempory, should be nullptr
+            0
+        );
+        if res > 0 {
+            byteorder::NativeEndian::write_u32(&mut PRIVATE_INPUT[0..0+4], plen);
+            plen as i32
+        } else {
+            0
+        }
     }
 }

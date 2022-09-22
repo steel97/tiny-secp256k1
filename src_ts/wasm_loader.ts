@@ -75,6 +75,8 @@ interface Secp256k1WASM {
   getKeyImage: (outputlen: number, inputpkLen: number, inputskLen: number) => number;
   rangeProofRewind: (outlen: number, plen: number) => number;
   ECDH_VEIL: (inputlen: number) => number;
+  pedersenCommit: (value: number) => number;
+  rangeproofSign: (plen: number, min_value: number, exp: number, min_bits: number, value: number, msg_len: number) => number;
 }
 
 export default instance.exports as unknown as Secp256k1WASM;

@@ -614,3 +614,82 @@ export function ECDH_VEIL(publicKey: Uint8Array, privateKey: Uint8Array): Uint8A
 
   }
 }
+
+export interface PedersenCommitResult {
+  blind: Uint8Array,
+  commitment: Uint8Array
+}
+
+export function pedersenCommit(
+  blind_output: Uint8Array,
+  commitment: Uint8Array,
+  value: number
+): PedersenCommitResult | null {
+  try {
+    BLIND_OUTPUT.set(blind_output);
+    COMMIT.set(commitment);
+
+    const res = wasm.pedersenCommit(value);
+
+    if (res == 1) {
+      const out: PedersenCommitResult = {
+        blind: BLIND_OUTPUT.slice(0, 32),
+        commitment: COMMIT.slice(0, 33)
+      };
+      return out;
+    } else return null;
+  } finally {
+    BLIND_OUTPUT.fill(0);
+    COMMIT.fill(0);
+  }
+}
+
+export interface RangeProofSignResult {
+  proof: Uint8Array,
+  proof_len: number,
+  commit: Uint8Array,
+  blind_output: Uint8Array,
+  nonce_output: Uint8Array,
+  message_output: Uint8Array
+}
+
+export function rangeproofSign(
+  proof: Uint8Array,
+  plen: number,
+  min_value: number,
+  commitment: Uint8Array,
+  blind: Uint8Array,
+  nonce: Uint8Array,
+  exp: number,
+  min_bits: number,
+  value: number,
+  message: Uint8Array,
+  msg_len: number
+): RangeProofSignResult | null {
+  try {
+    PROOF.set(proof);
+    COMMIT.set(commitment);
+    BLIND_OUTPUT.set(blind);
+    NONCE_OUTPUT.set(nonce);
+    MESSAGE_OUTPUT.set(message);
+
+    const res = wasm.rangeproofSign(plen, min_value, exp, min_bits, value, msg_len);
+
+    if (res == 1) {
+      const dv = new DataView(PROOFRESULT.slice(0, 40).buffer);
+      const nplen = Number(dv.getUint32(0, true));
+      const out: RangeProofSignResult = {
+        proof: PROOF.slice(0, nplen),
+        proof_len: nplen,
+        commit: COMMIT.slice(0, 33),
+        blind_output: BLIND_OUTPUT.slice(0, 32),
+        nonce_output: NONCE_OUTPUT.slice(0, 32),
+        message_output: MESSAGE_OUTPUT.slice(0, msg_len)
+      };
+      return out;
+    } else return null;
+  } finally {
+    BLIND_OUTPUT.fill(0);
+    COMMIT.fill(0);
+  }
+}
