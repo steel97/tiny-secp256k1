@@ -1,6 +1,6 @@
 {
   "name": "veil-secp256k1",
-  "version": "2.2.69",
+  "version": "2.2.71",
   "description": "A tiny secp256k1 JS fork",
   "homepage": "https://github.com/steel97/tiny-secp256k1#readme",
   "bugs": {

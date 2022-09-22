@@ -621,8 +621,8 @@ export interface PedersenCommitResult {
 }
 
 export function pedersenCommit(
-  blind_output: Uint8Array,
   commitment: Uint8Array,
+  blind_output: Uint8Array,
   value: number
 ): PedersenCommitResult | null {
   try {
@@ -689,7 +689,10 @@ export function rangeproofSign(
       return out;
     } else return null;
   } finally {
-    BLIND_OUTPUT.fill(0);
+    PROOF.fill(0);
     COMMIT.fill(0);
+    BLIND_OUTPUT.fill(0);
+    NONCE_OUTPUT.fill(0);
+    MESSAGE_OUTPUT.fill(0);
   }
 }
