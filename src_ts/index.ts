@@ -801,7 +801,7 @@ export function pedersenBlindSum(
     //blinds_size = n?
     const res = wasm.pedersenBlindSum(n, n, npositive);
 
-    if (res == 1) {
+    if (res > 0) {
       return BLIND_OUTPUT.slice(0, 32);
     } else return null;
   } finally {
@@ -851,7 +851,7 @@ export function prepareMlsag(
     //blinds_size = n?
     const res = wasm.prepareMlsag(nOuts, nBlinded, vpInCommitsLen, vpBlindsLen, nCols, nRows);
 
-    if (res == 1) {
+    if (res == 0) {
       return {
         M: M_INPUT.slice(0, m_input.length),
         SK: SK_INPUT.slice(0, sk_input.length)
@@ -902,7 +902,7 @@ export function generateMlsag(
     //blinds_size = n?
     const res = wasm.generateMlsag(nCols, nRows, indexRef, sk_size);
 
-    if (res == 1) {
+    if (res == 0) {
       return {
         KI: KI_BIG_OUTPUT.slice(0, ki.length),
         PC: PC_OUTPUT.slice(0, pc.length),
@@ -928,7 +928,7 @@ export function verifyMlsag(
   ki: Uint8Array,
   pc: Uint8Array,
   ps: Uint8Array
-): boolean {
+): number {
   try {
     PREIMAGE_INPUT.set(preimage);
     PK_INPUT.set(pk);
@@ -937,7 +937,7 @@ export function verifyMlsag(
     PS_OUTPUT.set(ps);
 
     const res = wasm.verifyMlsag(nCols, nRows);
-    return res == 1;
+    return res;
   } finally {
     PREIMAGE_INPUT.fill(0);
     PK_INPUT.fill(0);
