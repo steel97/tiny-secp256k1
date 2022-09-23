@@ -18,6 +18,7 @@ export const TWEAK_SIZE = 32;
 export const HASH_SIZE = 32;
 export const EXTRA_DATA_SIZE = 32;
 export const SIGNATURE_SIZE = 64;
+export const WTF_MERGED_ARRAY_SIZE = 1_048_576;
 
 const BN32_ZERO = new Uint8Array(32);
 const BN32_N = new Uint8Array([

@@ -33,7 +33,12 @@ use secp256k1_sys::{
     secp256k1_rangeproof_rewind,
     secp256k1_ecdh_veil,
     secp256k1_pedersen_commit,
-    secp256k1_rangeproof_sign
+    secp256k1_rangeproof_sign,
+
+    secp256k1_pedersen_blind_sum,
+    secp256k1_prepare_mlsag,
+    secp256k1_generate_mlsag,
+    secp256k1_verify_mlsag
 };
 
 use secp256k1_sys::recovery::{
@@ -86,6 +91,8 @@ const ERROR_BAD_SIGNATURE: usize = 4;
 const MESSAGE_SIZE: usize = 256;
 const PROOF_SIZE: usize = 40960;
 
+const WTF_MERGED_ARRAY_SIZE: usize = 1_048_576;
+
 #[no_mangle]
 pub static mut PRIVATE_INPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
 #[no_mangle]
@@ -127,6 +134,34 @@ pub static mut COMMIT: [u8; PUBLIC_KEY_COMPRESSED_SIZE] = [0; PUBLIC_KEY_COMPRES
 pub static mut PROOF: [u8; PROOF_SIZE] = [0; PROOF_SIZE];
 #[no_mangle]
 pub static mut PROOFRESULT: [u8; 40] = [0; 40];
+
+// BLINDS - big array
+#[no_mangle]
+pub static mut BLINDS: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// M_INPUT - big array
+#[no_mangle]
+pub static mut M_INPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// PCM_IN - big array
+#[no_mangle]
+pub static mut PCM_IN: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// PCM_OUT - big array
+#[no_mangle]
+pub static mut PCM_OUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// KI_BIG_OUTPUT - big array
+#[no_mangle]
+pub static mut KI_BIG_OUTPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// PC_OUTPUT - big array
+#[no_mangle]
+pub static mut PC_OUTPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// PS_OUTPUT - big array
+#[no_mangle]
+pub static mut PS_OUTPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// PREIMAGE_INPUT - 32 bytes,
+#[no_mangle]
+pub static mut PREIMAGE_INPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
+// SKS_INPUT - big array
+#[no_mangle]
+pub static mut SKS_INPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
 
 // veil end
 
@@ -836,5 +871,124 @@ pub extern "C" fn rangeproof_sign(mut plen: u32, min_value: u64, exp: i32, min_b
         } else {
             0
         }
+    }
+}
+
+//
+//
+//
+// 4 LEFT METHODS
+//
+//
+//
+
+// new buffers
+
+// BLINDS - big array
+// M_INPUT - big array
+// PCM_IN - big array
+// PCM_OUT - big array
+// KI_OUTPUT - big array
+// PC_OUTPUT - big array
+// PS_OUTPUT - big array
+// PREIMAGE_INPUT - 32 bytes,
+// SKS_INPUT - big array
+
+// end
+
+//secp256k1_pedersen_blind_sum
+//cx, unsigned char *blind_out, blinds_size, const unsigned char *const *blinds, size_t n, size_t npositive
+//blind_out (return), blinds (const), 
+#[no_mangle]
+#[export_name = "pedersenBlindSum"]
+pub extern "C" fn pedersen_blind_sum(blinds_size: usize, n: usize, npositive: usize) -> i32 {
+    unsafe {
+        return secp256k1_pedersen_blind_sum(
+            get_context(),
+            BLIND_OUTPUT.as_mut_ptr(),
+            blinds_size,
+            BLINDS.as_mut_ptr(),
+            n,
+            npositive
+        );
+    }
+}
+
+//secp256k1_prepare_mlsag
+/*
+    uint8_t *m, uint8_t *sk, size_t nOuts, size_t nBlinded,  vpInCommitsLen: size_t, vpBlindsLen: size_t, size_t nCols, size_t nRows,
+    const uint8_t **pcm_in, const uint8_t **pcm_out, const uint8_t **blinds
+*/
+// m (buffer, return), sk (buffer, return), pcm_in(pointer to a pointer const), pcm_out(pointer to a pointer const), blinds (pointer to a pointer const) *mut *mut
+#[no_mangle]
+#[export_name = "prepareMlsag"]
+pub extern "C" fn prepare_mlsag(nOuts: usize, nBlinded: usize, vpInCommitsLen: usize, vpBlindsLen: usize, nCols: usize, nRows: usize) -> i32 {
+    unsafe {
+        return secp256k1_prepare_mlsag(
+            M_INPUT.as_mut_ptr(),
+            SK_INPUT.as_mut_ptr(),
+            nOuts,
+            nBlinded,
+            vpInCommitsLen,
+            vpBlindsLen,
+            nCols,
+            nRows,
+            PCM_IN.as_mut_ptr(),
+            PCM_OUT.as_mut_ptr(),
+            BLINDS.as_mut_ptr()
+        );
+    }
+}
+
+//secp256k1_generate_mlsag
+/*
+    const rustsecp256k1_v0_4_1_context *ctx,
+    uint8_t *ki, uint8_t *pc, uint8_t *ps,
+    const uint8_t *nonce, const uint8_t *preimage, size_t nCols,
+    size_t nRows, size_t index, sk_size, const uint8_t **sk, const uint8_t *pk)
+*/
+// ki (return), pc (return), ps (return)
+#[no_mangle]
+#[export_name = "generateMlsag"]
+pub extern "C" fn generate_mlsag(nCols: usize, nRows: usize, index: usize, sk_size: usize) -> i32 {
+    unsafe {
+        return secp256k1_generate_mlsag(
+            get_context(),
+            KI_BIG_OUTPUT.as_mut_ptr(),
+            PC_OUTPUT.as_mut_ptr(),
+            PS_OUTPUT.as_mut_ptr(),
+            NONCE_OUTPUT.as_mut_ptr(),
+            PREIMAGE_INPUT.as_mut_ptr(),
+            nCols,
+            nRows,
+            index,
+            sk_size,
+            SKS_INPUT.as_mut_ptr(),
+            PK_INPUT.as_mut_ptr()
+        );
+    }
+}
+
+//secp256k1_verify_mlsag
+/*
+    const rustsecp256k1_v0_4_1_context *ctx,
+    const uint8_t *preimage, size_t nCols, size_t nRows,
+    const uint8_t *pk, const uint8_t *ki, const uint8_t *pc, const uint8_t *ps
+*/
+// everything const, only return matter
+#[no_mangle]
+#[export_name = "verifyMlsag"]
+pub extern "C" fn verify_mlsag(nCols: usize, nRows: usize) -> i32 {
+    unsafe {
+        return secp256k1_verify_mlsag(
+            get_context(),
+            PREIMAGE_INPUT.as_mut_ptr(),
+            nCols,
+            nRows,
+            PK_INPUT.as_mut_ptr(),
+            KI_BIG_OUTPUT.as_mut_ptr(),
+            PC_OUTPUT.as_mut_ptr(),
+            PS_OUTPUT.as_mut_ptr()
+        );
     }
 }

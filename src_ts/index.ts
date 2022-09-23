@@ -24,6 +24,31 @@ const WASM_NONCE_OUTPUT_PTR = wasm.NONCE_OUTPUT.value;
 const WASM_COMMIT_PTR = wasm.COMMIT.value;
 const WASM_PROOF_PTR = wasm.PROOF.value;
 const WASM_PROOFRESULT_PTR = wasm.PROOFRESULT.value;
+
+// new buffers
+
+// BLINDS - big array
+const WASM_BLINDS_PTR = wasm.BLINDS.value;
+// M_INPUT - big array
+const WASM_M_INPUT_PTR = wasm.M_INPUT.value;
+// PCM_IN - big array
+const WASM_PCM_IN_PTR = wasm.PCM_IN.value;
+// PCM_OUT - big array
+const WASM_PCM_OUT_PTR = wasm.PCM_OUT.value;
+// KI_OUTPUT - big array
+const WASM_KI_BIG_OUTPUT_PTR = wasm.KI_BIG_OUTPUT.value;
+// PC_OUTPUT - big array
+const WASM_PC_OUTPUT_PTR = wasm.PC_OUTPUT.value;
+// PS_OUTPUT - big array
+const WASM_PS_OUTPUT_PTR = wasm.PS_OUTPUT.value;
+// PREIMAGE_INPUT - 32 bytes,
+const WASM_PREIMAGE_INPUT_PTR = wasm.PREIMAGE_INPUT.value;
+// SKS_INPUT - big array
+const WASM_SKS_INPUT_PTR = wasm.SKS_INPUT.value;
+
+// end
+
+
 // end
 
 const PRIVATE_KEY_INPUT = WASM_BUFFER.subarray(
@@ -109,6 +134,58 @@ const PROOFRESULT = WASM_BUFFER.subarray(
   WASM_PROOFRESULT_PTR,
   WASM_PROOFRESULT_PTR + 40
 );
+
+
+// new buffers
+
+// BLINDS - big array
+const BLINDS = WASM_BUFFER.subarray(
+  WASM_BLINDS_PTR,
+  WASM_BLINDS_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// M_INPUT - big array
+const M_INPUT = WASM_BUFFER.subarray(
+  WASM_M_INPUT_PTR,
+  WASM_M_INPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// PCM_IN - big array
+const PCM_IN = WASM_BUFFER.subarray(
+  WASM_PCM_IN_PTR,
+  WASM_PCM_IN_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// PCM_OUT - big array
+const PCM_OUT = WASM_BUFFER.subarray(
+  WASM_PCM_OUT_PTR,
+  WASM_PCM_OUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// KI_BIG_OUTPUT - big array
+const KI_BIG_OUTPUT = WASM_BUFFER.subarray(
+  WASM_KI_BIG_OUTPUT_PTR,
+  WASM_KI_BIG_OUTPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// PC_OUTPUT - big array
+const PC_OUTPUT = WASM_BUFFER.subarray(
+  WASM_PC_OUTPUT_PTR,
+  WASM_PC_OUTPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// PS_OUTPUT - big array
+const PS_OUTPUT = WASM_BUFFER.subarray(
+  WASM_PS_OUTPUT_PTR,
+  WASM_PS_OUTPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+// PREIMAGE_INPUT - 32 bytes,
+const PREIMAGE_INPUT = WASM_BUFFER.subarray(
+  WASM_PREIMAGE_INPUT_PTR,
+  WASM_PREIMAGE_INPUT_PTR + 32
+);
+// SKS_INPUT - big array
+const SKS_INPUT = WASM_BUFFER.subarray(
+  WASM_SKS_INPUT_PTR,
+  WASM_SKS_INPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
+
+// end
+
 // end
 
 function assumeCompression(compressed?: boolean, p?: Uint8Array): number {
@@ -574,7 +651,7 @@ export function rangeProofRewind(
   rangeproof: Uint8Array,
 ): RangeProofRewindResult | null {
   try {
-    let out_len = 256;
+    const out_len = 256;
     NONCE_OUTPUT.set(nonce);
     MESSAGE_OUTPUT.fill(0);
     COMMIT.set(commitment);
@@ -694,5 +771,178 @@ export function rangeproofSign(
     BLIND_OUTPUT.fill(0);
     NONCE_OUTPUT.fill(0);
     MESSAGE_OUTPUT.fill(0);
+  }
+}
+
+
+
+
+//
+//
+//   NEW METHODS
+//
+//
+export function pedersenBlindSum(
+  blind: Uint8Array,
+  blinds: Array<Uint8Array>,
+  n: number,
+  npositive: number
+): Uint8Array | null {
+  try {
+    BLIND_OUTPUT.set(blind); // return!
+    BLINDS.fill(0);
+
+    let index = 0;
+    for (const blind_local of blinds) {
+      BLINDS.set(blind_local, index);
+      index += blind_local.length; //32?
+    }
+
+    //blinds_size = n?
+    const res = wasm.pedersenBlindSum(n, n, npositive);
+
+    if (res == 1) {
+      return BLIND_OUTPUT.slice(0, 32);
+    } else return null;
+  } finally {
+    BLIND_OUTPUT.fill(0);
+    BLINDS.fill(0);
+  }
+}
+
+export interface PrepareMlsagResult {
+  M: Uint8Array,
+  SK: Uint8Array
+}
+
+export function prepareMlsag(
+  m_input: Uint8Array,
+  sk_input: Uint8Array,
+  nOuts: number, nBlinded: number, vpInCommitsLen: number, vpBlindsLen: number, nCols: number, nRows: number,
+  vpInCommits: Array<Uint8Array>,
+  vpOutCommits: Array<Uint8Array>,
+  vpBlinds: Array<Uint8Array>
+): PrepareMlsagResult | null {
+  try {
+    M_INPUT.set(m_input); // return!
+    SK_INPUT.set(sk_input); // return!
+
+    PCM_IN.fill(0);
+    let index = 0;
+    for (const local of vpInCommits) {
+      PCM_IN.set(local, index);
+      index += local.length;
+    }
+
+    PCM_OUT.fill(0);
+    index = 0;
+    for (const local of vpOutCommits) {
+      PCM_OUT.set(local, index);
+      index += local.length;
+    }
+
+    BLINDS.fill(0);
+    index = 0;
+    for (const local of vpBlinds) {
+      BLINDS.set(local, index);
+      index += local.length;
+    }
+
+    //blinds_size = n?
+    const res = wasm.prepareMlsag(nOuts, nBlinded, vpInCommitsLen, vpBlindsLen, nCols, nRows);
+
+    if (res == 1) {
+      return {
+        M: M_INPUT.slice(0, m_input.length),
+        SK: SK_INPUT.slice(0, sk_input.length)
+      };
+    } else return null;
+  } finally {
+    M_INPUT.fill(0);
+    SK_INPUT.fill(0);
+    PCM_IN.fill(0);
+    PCM_OUT.fill(0);
+    BLINDS.fill(0);
+  }
+}
+
+
+
+export interface GenerateMlsagResult {
+  KI: Uint8Array,
+  PC: Uint8Array,
+  PS: Uint8Array
+}
+
+export function generateMlsag(
+  ki: Uint8Array,
+  pc: Uint8Array,
+  ps: Uint8Array,
+  nonce: Uint8Array,
+  preimage: Uint8Array,
+  nCols: number, nRows: number, indexRef: number, sk_size: number,
+  sks: Array<Uint8Array>,
+  pk: Uint8Array
+): GenerateMlsagResult | null {
+  try {
+    KI_BIG_OUTPUT.set(ki); // return!
+    PC_OUTPUT.set(pc); // return!
+    PS_OUTPUT.set(ps); // return!
+    NONCE_OUTPUT.set(nonce);
+    PREIMAGE_INPUT.set(preimage);
+    PK_INPUT.set(pk);
+
+    SKS_INPUT.fill(0);
+    let index = 0;
+    for (const local of sks) {
+      SKS_INPUT.set(local, index);
+      index += local.length;
+    }
+
+    //blinds_size = n?
+    const res = wasm.generateMlsag(nCols, nRows, indexRef, sk_size);
+
+    if (res == 1) {
+      return {
+        KI: KI_BIG_OUTPUT.slice(0, ki.length),
+        PC: PC_OUTPUT.slice(0, pc.length),
+        PS: PS_OUTPUT.slice(0, ps.length)
+      };
+    } else return null;
+  } finally {
+    KI_BIG_OUTPUT.fill(0);
+    PC_OUTPUT.fill(0);
+    PS_OUTPUT.fill(0);
+    NONCE_OUTPUT.fill(0);
+    PREIMAGE_INPUT.fill(0);
+    PK_INPUT.fill(0);
+    SKS_INPUT.fill(0);
+  }
+}
+
+
+export function verifyMlsag(
+  preimage: Uint8Array,
+  nCols: number, nRows: number,
+  pk: Uint8Array,
+  ki: Uint8Array,
+  pc: Uint8Array,
+  ps: Uint8Array
+): boolean {
+  try {
+    PREIMAGE_INPUT.set(preimage);
+    PK_INPUT.set(pk);
+    KI_BIG_OUTPUT.set(ki);
+    PC_OUTPUT.set(pc);
+    PS_OUTPUT.set(ps);
+
+    const res = wasm.verifyMlsag(nCols, nRows);
+    return res == 1;
+  } finally {
+    PREIMAGE_INPUT.fill(0);
+    PK_INPUT.fill(0);
+    KI_BIG_OUTPUT.fill(0);
+    PC_OUTPUT.fill(0);
+    PS_OUTPUT.fill(0);
   }
 }

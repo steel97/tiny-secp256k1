@@ -49,6 +49,30 @@ interface Secp256k1WASM {
   COMMIT: WebAssemblyGlobal;
   PROOF: WebAssemblyGlobal;
   PROOFRESULT: WebAssemblyGlobal;
+
+  // new buffers
+
+  // BLINDS - big array
+  BLINDS: WebAssemblyGlobal;
+  // M_INPUT - big array
+  M_INPUT: WebAssemblyGlobal;
+  // PCM_IN - big array
+  PCM_IN: WebAssemblyGlobal;
+  // PCM_OUT - big array
+  PCM_OUT: WebAssemblyGlobal;
+  // KI_OUTPUT - big array
+  KI_BIG_OUTPUT: WebAssemblyGlobal; //!!!
+  // PC_OUTPUT - big array
+  PC_OUTPUT: WebAssemblyGlobal;
+  // PS_OUTPUT - big array
+  PS_OUTPUT: WebAssemblyGlobal;
+  // PREIMAGE_INPUT - 32 bytes,
+  PREIMAGE_INPUT: WebAssemblyGlobal;
+  // SKS_INPUT - big array
+  SKS_INPUT: WebAssemblyGlobal;
+
+  // end
+
   // end
 
   initializeContext: () => void;
@@ -77,6 +101,11 @@ interface Secp256k1WASM {
   ECDH_VEIL: (inputlen: number) => number;
   pedersenCommit: (value: number) => number;
   rangeproofSign: (plen: number, min_value: number, exp: number, min_bits: number, value: number, msg_len: number) => number;
+
+  pedersenBlindSum: (blinds_size: number, n: number, npositive: number) => number;
+  prepareMlsag: (nOuts: number, nBlinded: number, vpInCommitsLen: number, vpBlindsLen: number, nCols: number, nRows: number) => number;
+  generateMlsag: (nCols: number, nRows: number, index: number, sk_size: number) => number;
+  verifyMlsag: (nCols: number, nRows: number) => number;
 }
 
 export default instance.exports as unknown as Secp256k1WASM;
