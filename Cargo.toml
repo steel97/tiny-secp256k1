@@ -13,7 +13,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 byteorder = { version = "1.4.3", default-features = false }
-secp256k1-sys = { version = "0.4.1", default-features = false,  features=["recovery"], git = "https://github.com/steel97/rust-secp256k1", rev = "12cdce52f7e89f2eefd7bba1e0d1bde52fa1e521" }
+secp256k1-sys = { version = "0.4.1", default-features = false,  features=["recovery"], git = "https://github.com/steel97/rust-secp256k1", rev = "7696008fcce059db236116445b23efdfe79beec6" }
 
 [profile.release]
 lto = true

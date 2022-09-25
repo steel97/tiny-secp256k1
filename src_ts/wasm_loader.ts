@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { path } from "./wasm_path.js";
+import { path } from "./wasm_path_cjs.js";
 import * as rand from "./rand.js";
 import * as validate_error from "./validate_error.js";
 
@@ -70,6 +70,8 @@ interface Secp256k1WASM {
   PREIMAGE_INPUT: WebAssemblyGlobal;
   // SKS_INPUT - big array
   SKS_INPUT: WebAssemblyGlobal;
+  // PKS_INPUT - big array
+  PKS_INPUT: WebAssemblyGlobal;
 
   // end
 
@@ -79,6 +81,7 @@ interface Secp256k1WASM {
   isPoint: (p: number) => number;
   pointAdd: (pA: number, pB: number, outputlen: number) => number;
   pointAddScalar: (p: number, outputlen: number) => number;
+  pkTweakAddRaw: () => number;
   pointCompress: (p: number, outputlen: number) => number;
   pointFromScalar: (outputlen: number) => number;
   xOnlyPointFromScalar: () => number;
@@ -98,14 +101,16 @@ interface Secp256k1WASM {
   // veil
   getKeyImage: (outputlen: number, inputpkLen: number, inputskLen: number) => number;
   rangeProofRewind: (outlen: number, plen: number) => number;
+  rangeProofVerify: (outlen: number, plen: number) => number;
   ECDH_VEIL: (inputlen: number) => number;
-  pedersenCommit: (value: number) => number;
-  rangeproofSign: (plen: number, min_value: number, exp: number, min_bits: number, value: number, msg_len: number) => number;
+  pedersenCommit: (value: bigint) => number;
+  rangeproofSign: (plen: number, min_value: bigint, exp: number, min_bits: number, value: bigint, msg_len: number) => number;
 
   pedersenBlindSum: (blinds_size: number, n: number, npositive: number) => number;
   prepareMlsag: (nOuts: number, nBlinded: number, vpInCommitsLen: number, vpBlindsLen: number, nCols: number, nRows: number) => number;
   generateMlsag: (nCols: number, nRows: number, index: number, sk_size: number) => number;
   verifyMlsag: (nCols: number, nRows: number) => number;
+  seckeyVerify: () => number;
 }
 
 export default instance.exports as unknown as Secp256k1WASM;

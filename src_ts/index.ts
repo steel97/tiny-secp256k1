@@ -45,6 +45,8 @@ const WASM_PS_OUTPUT_PTR = wasm.PS_OUTPUT.value;
 const WASM_PREIMAGE_INPUT_PTR = wasm.PREIMAGE_INPUT.value;
 // SKS_INPUT - big array
 const WASM_SKS_INPUT_PTR = wasm.SKS_INPUT.value;
+// PKS_INPUT - big array
+const WASM_PKS_INPUT_PTR = wasm.PKS_INPUT.value;
 
 // end
 
@@ -183,6 +185,11 @@ const SKS_INPUT = WASM_BUFFER.subarray(
   WASM_SKS_INPUT_PTR,
   WASM_SKS_INPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
 );
+// PKS_INPUT - big array
+const PKS_INPUT = WASM_BUFFER.subarray(
+  WASM_PKS_INPUT_PTR,
+  WASM_PKS_INPUT_PTR + validate.WTF_MERGED_ARRAY_SIZE
+);
 
 // end
 
@@ -259,6 +266,22 @@ export function pointAddScalar(
     TWEAK_INPUT.set(tweak);
     return wasm.pointAddScalar(p.length, outputlen) === 1
       ? PUBLIC_KEY_INPUT.slice(0, outputlen)
+      : null;
+  } finally {
+    PUBLIC_KEY_INPUT.fill(0);
+    TWEAK_INPUT.fill(0);
+  }
+}
+
+export function pkTweakAddRaw(
+  p: Uint8Array,
+  tweak: Uint8Array
+): Uint8Array | null {
+  try {
+    PUBLIC_KEY_INPUT.set(p);
+    TWEAK_INPUT.set(tweak);
+    return wasm.pkTweakAddRaw() === 1
+      ? PUBLIC_KEY_INPUT.slice(0)
       : null;
   } finally {
     PUBLIC_KEY_INPUT.fill(0);
@@ -678,6 +701,29 @@ export function rangeProofRewind(
   }
 }
 
+export function rangeProofVerify(
+  commitment: Uint8Array,
+  rangeproof: Uint8Array,
+): number {
+  try {
+    const out_len = 256;
+    MESSAGE_OUTPUT.fill(0);
+    COMMIT.set(commitment);
+    PROOF.set(rangeproof);
+    const proofLen = rangeproof.length;
+
+    const res = wasm.rangeProofVerify(out_len, proofLen);
+    return res;
+  } finally {
+    PROOFRESULT.fill(0);
+    BLIND_OUTPUT.fill(0);
+    MESSAGE_OUTPUT.fill(0);
+    NONCE_OUTPUT.fill(0);
+    COMMIT.fill(0);
+    PROOF.fill(0);
+  }
+}
+
 export function ECDH_VEIL(publicKey: Uint8Array, privateKey: Uint8Array): Uint8Array | null {
   try {
     PUBLIC_KEY_INPUT.set(publicKey);
@@ -700,7 +746,7 @@ export interface PedersenCommitResult {
 export function pedersenCommit(
   commitment: Uint8Array,
   blind_output: Uint8Array,
-  value: number
+  value: bigint
 ): PedersenCommitResult | null {
   try {
     BLIND_OUTPUT.set(blind_output);
@@ -733,13 +779,13 @@ export interface RangeProofSignResult {
 export function rangeproofSign(
   proof: Uint8Array,
   plen: number,
-  min_value: number,
+  min_value: bigint,
   commitment: Uint8Array,
   blind: Uint8Array,
   nonce: Uint8Array,
   exp: number,
   min_bits: number,
-  value: number,
+  value: bigint,
   message: Uint8Array,
   msg_len: number
 ): RangeProofSignResult | null {
@@ -753,7 +799,7 @@ export function rangeproofSign(
     const res = wasm.rangeproofSign(plen, min_value, exp, min_bits, value, msg_len);
 
     if (res == 1) {
-      const dv = new DataView(PROOFRESULT.slice(0, 40).buffer);
+      const dv = new DataView(PRIVATE_KEY_INPUT.slice(0, 4).buffer);
       const nplen = Number(dv.getUint32(0, true));
       const out: RangeProofSignResult = {
         proof: PROOF.slice(0, nplen),
@@ -890,7 +936,7 @@ export function generateMlsag(
     PS_OUTPUT.set(ps); // return!
     NONCE_OUTPUT.set(nonce);
     PREIMAGE_INPUT.set(preimage);
-    PK_INPUT.set(pk);
+    PKS_INPUT.set(pk);
 
     SKS_INPUT.fill(0);
     let index = 0;
@@ -901,7 +947,6 @@ export function generateMlsag(
 
     //blinds_size = n?
     const res = wasm.generateMlsag(nCols, nRows, indexRef, sk_size);
-
     if (res == 0) {
       return {
         KI: KI_BIG_OUTPUT.slice(0, ki.length),
@@ -915,7 +960,7 @@ export function generateMlsag(
     PS_OUTPUT.fill(0);
     NONCE_OUTPUT.fill(0);
     PREIMAGE_INPUT.fill(0);
-    PK_INPUT.fill(0);
+    PKS_INPUT.fill(0);
     SKS_INPUT.fill(0);
   }
 }
@@ -931,7 +976,7 @@ export function verifyMlsag(
 ): number {
   try {
     PREIMAGE_INPUT.set(preimage);
-    PK_INPUT.set(pk);
+    PKS_INPUT.set(pk);
     KI_BIG_OUTPUT.set(ki);
     PC_OUTPUT.set(pc);
     PS_OUTPUT.set(ps);
@@ -940,9 +985,22 @@ export function verifyMlsag(
     return res;
   } finally {
     PREIMAGE_INPUT.fill(0);
-    PK_INPUT.fill(0);
+    PKS_INPUT.fill(0);
     KI_BIG_OUTPUT.fill(0);
     PC_OUTPUT.fill(0);
     PS_OUTPUT.fill(0);
+  }
+}
+
+export function seckeyVerify(
+  input: Uint8Array
+): boolean {
+  try {
+    PUBLIC_KEY_INPUT.set(input);
+
+    const res = wasm.seckeyVerify();
+    return res == 1;
+  } finally {
+    PUBLIC_KEY_INPUT.fill(0);
   }
 }

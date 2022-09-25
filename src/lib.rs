@@ -28,12 +28,15 @@ use secp256k1_sys::{
     secp256k1_xonly_pubkey_tweak_add_check, types::c_void, Context, KeyPair, PublicKey, Signature,
     XOnlyPublicKey, SECP256K1_SER_COMPRESSED, SECP256K1_SER_UNCOMPRESSED, SECP256K1_START_SIGN,
     SECP256K1_START_VERIFY,
+    secp256k1_ec_pubkey_tweak_add_raw,
     // veil
+    secp256k1_ec_seckey_verify,
     secp256k1_get_keyimage,
     secp256k1_rangeproof_rewind,
     secp256k1_ecdh_veil,
     secp256k1_pedersen_commit,
     secp256k1_rangeproof_sign,
+    secp256k1_rangeproof_verify,
 
     secp256k1_pedersen_blind_sum,
     secp256k1_prepare_mlsag,
@@ -64,6 +67,8 @@ extern "C" {
     fn printn2(msg:usize);
     #[link_name = "printn"]
     fn printn3(msg:u64);
+    #[link_name = "printn"]
+    fn printn4(msg:u32);
 }
 
 type InvalidInputResult<T> = Result<T, usize>;
@@ -158,12 +163,24 @@ pub static mut PC_OUTPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZ
 pub static mut PS_OUTPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
 // PREIMAGE_INPUT - 32 bytes,
 #[no_mangle]
-pub static mut PREIMAGE_INPUT: [u8; PRIVATE_KEY_SIZE] = [0; PRIVATE_KEY_SIZE];
+pub static mut PREIMAGE_INPUT: [u8; 32] = [0; 32];
 // SKS_INPUT - big array
 #[no_mangle]
 pub static mut SKS_INPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
-
+// PKS_INPUT - big array
+#[no_mangle]
+pub static mut PKS_INPUT: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
 // veil end
+
+// workaround alloc
+// SKS_INPUT - big array
+#[no_mangle]
+pub static mut EBUF1: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+#[no_mangle]
+pub static mut EBUF2: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+#[no_mangle]
+pub static mut EBUF3: [u8; WTF_MERGED_ARRAY_SIZE] = [0; WTF_MERGED_ARRAY_SIZE];
+// end
 
 macro_rules! jstry {
     ($value:expr) => {
@@ -794,6 +811,32 @@ pub extern "C" fn rangeproof_rewind(mut outlen: usize, plen: usize) -> i32 {
     }
 }
 
+#[no_mangle]
+#[export_name = "rangeProofVerify"]
+pub extern "C" fn rangeproof_verify(mut outlen: usize, plen: usize) -> i32 {
+    // mut outputlen: usize
+    unsafe {
+        let mut value_out: u64 = 0;
+        let mut min_value: u64 = 0;
+        let mut max_value: u64 = 0;
+        //let pk2 = jstry!(pubkey_parse(PK_INPUT.as_ptr(), inputpkLen), 0);
+        /*for i in 0..33 {
+            printn(PK_INPUT[i]);
+        }*/
+        let res = secp256k1_rangeproof_verify(
+            get_context(),
+            &mut min_value,
+            &mut max_value,
+            COMMIT.as_mut_ptr(),
+            PROOF.as_mut_ptr(),
+            plen,
+            BLIND_OUTPUT.as_mut_ptr(), //tempory, should be nullptr
+            0
+        );
+        res
+    }
+}
+
 //secp256k1_ecdh_veil
 #[no_mangle]
 #[export_name = "ECDH_VEIL"]
@@ -866,8 +909,10 @@ pub extern "C" fn rangeproof_sign(mut plen: u32, min_value: u64, exp: i32, min_b
             0
         );
         if res > 0 {
+            //printn4(plen);
             byteorder::NativeEndian::write_u32(&mut PRIVATE_INPUT[0..0+4], plen);
-            plen as i32
+            //plen as i32
+            1
         } else {
             0
         }
@@ -893,6 +938,7 @@ pub extern "C" fn rangeproof_sign(mut plen: u32, min_value: u64, exp: i32, min_b
 // PS_OUTPUT - big array
 // PREIMAGE_INPUT - 32 bytes,
 // SKS_INPUT - big array
+// PKS_INPUT - big array
 
 // end
 
@@ -905,6 +951,7 @@ pub extern "C" fn pedersen_blind_sum(blinds_size: usize, n: usize, npositive: us
     unsafe {
         return secp256k1_pedersen_blind_sum(
             get_context(),
+            EBUF1.as_mut_ptr(),
             BLIND_OUTPUT.as_mut_ptr(),
             blinds_size,
             BLINDS.as_mut_ptr(),
@@ -925,6 +972,9 @@ pub extern "C" fn pedersen_blind_sum(blinds_size: usize, n: usize, npositive: us
 pub extern "C" fn prepare_mlsag(nOuts: usize, nBlinded: usize, vpInCommitsLen: usize, vpBlindsLen: usize, nCols: usize, nRows: usize) -> i32 {
     unsafe {
         return secp256k1_prepare_mlsag(
+            EBUF1.as_mut_ptr(),
+            EBUF2.as_mut_ptr(),
+            EBUF3.as_mut_ptr(),
             M_INPUT.as_mut_ptr(),
             SK_INPUT.as_mut_ptr(),
             nOuts,
@@ -954,6 +1004,7 @@ pub extern "C" fn generate_mlsag(nCols: usize, nRows: usize, index: usize, sk_si
     unsafe {
         return secp256k1_generate_mlsag(
             get_context(),
+            EBUF1.as_mut_ptr(),
             KI_BIG_OUTPUT.as_mut_ptr(),
             PC_OUTPUT.as_mut_ptr(),
             PS_OUTPUT.as_mut_ptr(),
@@ -964,7 +1015,7 @@ pub extern "C" fn generate_mlsag(nCols: usize, nRows: usize, index: usize, sk_si
             index,
             sk_size,
             SKS_INPUT.as_mut_ptr(),
-            PK_INPUT.as_mut_ptr()
+            PKS_INPUT.as_mut_ptr()
         );
     }
 }
@@ -985,10 +1036,47 @@ pub extern "C" fn verify_mlsag(nCols: usize, nRows: usize) -> i32 {
             PREIMAGE_INPUT.as_mut_ptr(),
             nCols,
             nRows,
-            PK_INPUT.as_mut_ptr(),
+            PKS_INPUT.as_mut_ptr(),
             KI_BIG_OUTPUT.as_mut_ptr(),
             PC_OUTPUT.as_mut_ptr(),
             PS_OUTPUT.as_mut_ptr()
         );
+    }
+}
+
+#[no_mangle]
+#[export_name = "pkTweakAddRaw"]
+pub extern "C" fn point_add_raw() -> i32 {
+    unsafe {
+        //let mut pk = jstry!(pubkey_parse(PUBLIC_KEY_INPUT.as_ptr(), inputlen), 0);
+        if secp256k1_ec_pubkey_tweak_add_raw(
+            get_context(),
+            PUBLIC_KEY_INPUT.as_mut_ptr(),
+            TWEAK_INPUT.as_ptr(),
+        ) == 1
+        {
+            //pubkey_serialize(&pk, PUBLIC_KEY_INPUT.as_mut_ptr(), outputlen);
+            1
+        } else {
+            0
+        }
+    }
+}
+
+#[no_mangle]
+#[export_name = "seckeyVerify"]
+pub extern "C" fn seckey_verify() -> i32 {
+    unsafe {
+        //let mut pk = jstry!(pubkey_parse(PUBLIC_KEY_INPUT.as_ptr(), inputlen), 0);
+        if secp256k1_ec_seckey_verify(
+            get_context(),
+            PUBLIC_KEY_INPUT.as_mut_ptr()
+        ) == 1
+        {
+            //pubkey_serialize(&pk, PUBLIC_KEY_INPUT.as_mut_ptr(), outputlen);
+            1
+        } else {
+            0
+        }
     }
 }
