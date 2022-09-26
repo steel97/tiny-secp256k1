@@ -1,5 +1,5 @@
 import { readFileSync } from "fs";
-import { path } from "./wasm_path.js"; //import { path } from "./wasm_path_cjs.js";
+import { path } from "./wasm_path.js"; //import { path } from "./wasm_path.js";
 import * as rand from "./rand.js";
 import * as validate_error from "./validate_error.js";
 

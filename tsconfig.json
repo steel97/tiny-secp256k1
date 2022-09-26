@@ -3,11 +3,16 @@
   "compilerOptions": {
     "target": "ES2015",
     "module": "ES2020",
+    "esModuleInterop": true,
     "declaration": true,
     "outDir": "./lib",
     "paths": {
-      "#wasm_path": ["./wasm_path.js"]
+      "#wasm_path": [
+        "./wasm_path.js"
+      ]
     }
   },
-  "exclude": ["src_ts/wasm_path_cjs.ts"]
+  "exclude": [
+    "src_ts/wasm_path_cjs.ts"
+  ]
 }

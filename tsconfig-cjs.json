@@ -3,10 +3,15 @@
   "compilerOptions": {
     "target": "ES2015",
     "module": "commonjs",
+    "esModuleInterop": true,
     "outDir": "./lib/cjs",
     "paths": {
-      "#wasm_path": ["./wasm_path_cjs.js"]
+      "#wasm_path": [
+        "./wasm_path_cjs.js"
+      ]
     }
   },
-  "exclude": ["src_ts/wasm_path.ts"]
+  "exclude": [
+    "src_ts/wasm_path.ts"
+  ]
 }
